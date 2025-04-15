@@ -126,6 +126,50 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
     res.status(200).send(house);
 });
 
+app.put("/api/houses/:id", upload.single("img"), (req,res)=>{
+    const house = houses.find((house)=>house._id===parseInt(req.params.id));
+
+    if(!house) {
+        res.status(404).send("The house with the provided id was not found");
+        return;
+    }
+
+    const result = validateHouse(req.body);
+
+    if(result.error) {
+        res.status(400).send(result.error.details[0].message);
+        return;
+    }
+
+    house.name = req.body.name;
+    house.description = req.body.description;
+    house.size = req.body.size;
+    house.bathrooms = req.body.bedrooms;
+    house.bedrooms = req.body.bathrooms;
+
+    if(req.file) {
+        house.main_image = req.file.filename;
+    }
+
+    res.status(200).send(house);
+});
+
+app.delete("/api/houses/:id" ,(req,res)=>{
+    console.log("I'm trying to delete" + req.params.id);
+    const house = houses.find((house)=>house._id===parseInt(req.params.id));
+
+    if(!house) {
+        console.log("Oh no I wasn't found");
+        res.status(404).send("The house with the provided id was not found");
+        return;
+    }
+
+    console.log("Yay you found me!");
+    const index = houses.indexOf(house);
+    houses.splice(index,1);
+    res.status(200).send(house);
+});
+
 const validateHouse = (house) => {
     const schema = Joi.object({
         _id:Joi.allow(""),
