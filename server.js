@@ -10,107 +10,44 @@ app.use(cors());
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, "./public/images/");
+        cb(null, "./public/images/");
     },
     filename: (req, file, cb) => {
-      cb(null, file.originalname);
+        cb(null, file.originalname);
     },
-  });
-  
-  const upload = multer({ storage: storage });
+});
 
-  mongoose
-  .connect("mongodb+srv://portiaportia:RCq4HTMF7ZXfeU8O@data.ng58qmq.mongodb.net/")
-  .then(() => {
-    console.log("connected to mongodb");
-  })
-  .catch((error) => {
+const upload = multer({ storage: storage });
+
+    mongoose
+    .connect("mongodb+srv://ldford711:6sdrsTeoX3cn0wlP@cluster-logan-df.eqj2ybp.mongodb.net/")
+    .then(() => {
+        console.log("connected to mongodb");
+    })
+    .catch((error) => {
     console.log("couldn't connect to mongodb", error);
-  });
-  
+    });
+
+const houseSchema = new mongoose.Schema({
+    name:String,
+    size:Number,
+    bedrooms:Number,
+    bathrooms:Number,
+    main_image:String
+});
+
+const House = mongoose.model("House", houseSchema);
+
 app.get("/",(req, res)=>{
     res.sendFile(__dirname+"/index.html");
 });
 
-let houses = [
-    {
-    "_id":1,
-    "name": "Farmhouse",
-    "size": 2000,
-    "bedrooms": 3,
-    "bathrooms": 2.5,
-    "features": [
-    "wrap around porch",
-    "attached garage"
-    ],
-    "main_image": "farm.webp",
-    "floor_plans": [
-    {
-    "name": "Main Level",
-    "image": "farm-floor1.webp"
-    },
-    {
-    "name": "Basement",
-    "image": "farm-floor2.webp"
-    }
-    ]
-    },
-    {
-    "_id":2,
-    "name": "Mountain House",
-    "size": 1700,
-    "bedrooms": 3,
-    "bathrooms": 2,
-    "features": [
-    "grand porch",
-    "covered deck"
-    ],
-    "main_image": "mountain-house.webp",
-    "floor_plans": [
-    {
-    "name": "Main Level",
-    "image": "mountain-house1.webp"
-    },
-    {
-    "name": "Optional Lower Level",
-    "image": "mountain-house2.webp"
-    },
-    {
-    "name": "Main Level Slab Option",
-    "image": "mountain-house3.jpg"
-    }
-    ]
-    },
-    {
-    "_id":3,
-    "name": "Lake House",
-    "size": 3000,
-    "bedrooms": 4,
-    "bathrooms": 3,
-    "features": [
-    "covered deck",
-    "outdoor kitchen",
-    "pool house"
-    ],
-    "main_image": "farm.webp",
-    "floor_plans": [
-    {
-    "name": "Main Level",
-    "image": "lake-house1.webp"
-    },
-    {
-    "name": "Lower Level",
-    "image": "lake-house2.webp"
-    }
-    ]
-    }
-];
-
-app.get("/api/houses", (req, res)=>{
+app.get("/api/houses", async(req, res)=>{
+    const houses = await House.find();
     res.send(houses);
 });
 
-app.post("/api/houses", upload.single("img"), (req,res)=>{
+app.post("/api/houses", upload.single("img"), async(req,res)=>{
     const result = validateHouse(req.body);
 
 
@@ -120,30 +57,23 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
         return;
     }
 
-    const house = {
-        _id: houses.length,
+    const house = new House({
         name:req.body.name,
         size:req.body.size,
         bedrooms:req.body.bedrooms,
         bathrooms:req.body.bathrooms,
-    };
+    });
 
     //adding image
     if(req.file){
         house.main_image = req.file.filename;
     }
 
-    houses.push(house);
-    res.status(200).send(house);
+    const newHouse = await house.save();
+    res.status(200).send(newHouse);
 });
 
-app.put("/api/houses/:id", upload.single("img"),(req,res)=>{
-    const house = houses.find((house)=>house._id===parseInt(req.params.id));
-
-    if(!house){
-        res.status(404).send("The house with the provided id was not found");
-        return;
-    }
+app.put("/api/houses/:id", upload.single("img"), async(req,res)=>{
 
     const result = validateHouse(req.body);
 
@@ -152,32 +82,25 @@ app.put("/api/houses/:id", upload.single("img"),(req,res)=>{
         return;
     }
 
-    house.name = req.body.name;
-    house.description = req.body.description;
-    house.size = req.body.size;
-    house.bathrooms = req.body.bathrooms;
-    house.bedrooms = req.body.bedrooms;
-
-    if(req.file){
-        house.main_image = req.file.filename;
+    const fieldsToUpdate = {
+        name:req.body.name,
+        size:req.body.size,
+        bedrooms:req.body.bedrooms,
+        bathrooms:req.body.bathrooms
     }
 
+    if(req.file){
+        fieldsToUpdate.main_image = req.file.filename;
+    }
+
+    const wentThrough = await House.updateOne({_id:req.params.id}, fieldsToUpdate);
+    const house = await House.findOne({_id:req.params.id});
+    
     res.status(200).send(house);
 });
 
-app.delete("/api/houses/:id",(req,res)=>{
-    console.log("I'm trying to delete" + req.params.id);
-    const house = houses.find((house)=>house._id===parseInt(req.params.id));
-
-    if(!house){
-        console.log("Oh no i wasn't found");
-        res.status(404).send("The house with the provided id was not found");
-        return;
-    }
-    console.log("YAY You found me");
-    console.log("The house you are deleting is " + house.name);
-    const index = houses.indexOf(house);
-    houses.splice(index,1);
+app.delete("/api/houses/:id", async(req,res)=>{
+    const house = await House.findByIdAndDelete(req.params.id);
     res.status(200).send(house);
 });
 
