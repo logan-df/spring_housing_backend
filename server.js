@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const Joi = require("joi");
+const mongoose = require("mongoose");
 const app = express();
 app.use(express.static("public"));
 app.use(express.json());
@@ -18,6 +19,15 @@ const storage = multer.diskStorage({
   
   const upload = multer({ storage: storage });
 
+  mongoose
+  .connect("mongodb+srv://portiaportia:RCq4HTMF7ZXfeU8O@data.ng58qmq.mongodb.net/")
+  .then(() => {
+    console.log("connected to mongodb");
+  })
+  .catch((error) => {
+    console.log("couldn't connect to mongodb", error);
+  });
+  
 app.get("/",(req, res)=>{
     res.sendFile(__dirname+"/index.html");
 });
@@ -118,6 +128,7 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
         bathrooms:req.body.bathrooms,
     };
 
+    //adding image
     if(req.file){
         house.main_image = req.file.filename;
     }
@@ -126,17 +137,17 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
     res.status(200).send(house);
 });
 
-app.put("/api/houses/:id", upload.single("img"), (req,res)=>{
+app.put("/api/houses/:id", upload.single("img"),(req,res)=>{
     const house = houses.find((house)=>house._id===parseInt(req.params.id));
 
-    if(!house) {
+    if(!house){
         res.status(404).send("The house with the provided id was not found");
         return;
     }
 
     const result = validateHouse(req.body);
 
-    if(result.error) {
+    if(result.error){
         res.status(400).send(result.error.details[0].message);
         return;
     }
@@ -144,27 +155,27 @@ app.put("/api/houses/:id", upload.single("img"), (req,res)=>{
     house.name = req.body.name;
     house.description = req.body.description;
     house.size = req.body.size;
-    house.bathrooms = req.body.bedrooms;
-    house.bedrooms = req.body.bathrooms;
+    house.bathrooms = req.body.bathrooms;
+    house.bedrooms = req.body.bedrooms;
 
-    if(req.file) {
+    if(req.file){
         house.main_image = req.file.filename;
     }
 
     res.status(200).send(house);
 });
 
-app.delete("/api/houses/:id" ,(req,res)=>{
+app.delete("/api/houses/:id",(req,res)=>{
     console.log("I'm trying to delete" + req.params.id);
     const house = houses.find((house)=>house._id===parseInt(req.params.id));
 
-    if(!house) {
-        console.log("Oh no I wasn't found");
+    if(!house){
+        console.log("Oh no i wasn't found");
         res.status(404).send("The house with the provided id was not found");
         return;
     }
-
-    console.log("Yay you found me!");
+    console.log("YAY You found me");
+    console.log("The house you are deleting is " + house.name);
     const index = houses.indexOf(house);
     houses.splice(index,1);
     res.status(200).send(house);
